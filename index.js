@@ -1,9 +1,17 @@
 const express = require('express');
 const app = express();
-const customers = require('https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers');
+const customers = require('request');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
+const QRCode = require('qrcode');
+const {toCanvas} = require("qrcode");
+
+customers('https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers', function (error, response, body) {
+    if (!error && response.statusCode === 200) {
+        console.log("Customer list received");
+    }
+})
 
 // adding Helmet to enhance your API's security
 app.use(helmet());
@@ -31,10 +39,21 @@ app.get('/customers/:username', (req, res) => {
 
 app.get('/prospects', (req,res) => {    res.send("Prospects list")});
 app.get('/orders', (req,res) => {    res.send("Orders list")});
+//product list (all products)
 app.get('/products', (req,res) => {    res.send("Products list")});
+//stock list (all stocks)
 app.get('/stocks', (req,res) => {    res.send("Stocks list")});
 app.post('/auth', (req,res) => {    res.send("authenticate")});
-app.post('/token', (req,res) => {    res.send("Create and send QR code key")});
+
+//create  qr code every time this endpoint is called
+app.get('/qr', (req,res) => {
+    QRCode.toDataURL('I am a pony!', function (err, url) {
+        console.log(url)
+    })
+    res.send("qr code")
+
+});
+
 app.delete('/token', (req,res) => {    res.send("destroy token")});
 
 app.listen(8090, () => {  console.log('Server listening on port 8090')});
