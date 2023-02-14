@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const customers = require('./customermock.json')
+const customers = require('https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
