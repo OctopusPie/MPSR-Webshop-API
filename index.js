@@ -7,8 +7,11 @@ const helmet = require('helmet');
 const QRCode = require('qrcode');
 const {toCanvas} = require("qrcode");
 
+let importedJSON = [];
+
 customers('https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers', function (error, response, body) {
     if (!error && response.statusCode === 200) {
+        importedJSON = JSON.parse(body);
         console.log("Customer list received");
     }
 })
@@ -27,13 +30,13 @@ app.get('/', (req, res) => {
 });
 
 app.get('/customers', (req,res) => {
-    res.status(200).json(customers)
+    res.status(200).json(importedJSON);
 });
 
 //get request for a specific customer with username to show the customer's details
-app.get('/customers/:username', (req, res) => {
-    const username = req.params.username;
-    const customer = customers.find(customer => customer.username === username);
+app.get('/customers/:id', (req, res) => {
+    const id = req.params.id;
+    const customer = importedJSON.find(customer => customer.id === id);
     res.status(200).json(customer);
 });
 
