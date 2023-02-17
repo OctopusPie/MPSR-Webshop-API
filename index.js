@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const QRCode = require('qrcode');
-const {toCanvas} = require("qrcode");
+const nodemailer = require('nodemailer');
 
 let importedJSON = [];
 
@@ -21,9 +21,11 @@ app.use(helmet());
 
 // using bodyParser to parse JSON bodies into JS objects
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
 // enabling CORS for all requests
 app.use(cors());
+
 
 app.get('/', (req, res) => {
     res.status(201).json({message: "Successfully Registered", status: 201});
@@ -50,11 +52,32 @@ app.post('/auth', (req,res) => {    res.send("authenticate")});
 
 //create  qr code every time this endpoint is called
 app.get('/qr', (req,res) => {
-    QRCode.toDataURL('I am a pony!', function (err, url) {
-        console.log(url)
-    })
-    res.send("qr code")
+    QRCode.toDataURL("https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers", function (err, qrCode) {
+        console.log(qrCode)
+        let transporter = nodemailer.createTransport({
+            service: 'outlook',
+            auth: {
+                user: 'henri.spaulding@epsi.fr',
+                pass: '.59hen)SPA'
+            }
+        });
 
+        let mailOptions = {
+            from: 'henri.spaulding@epsi.fr',
+            to: 'henri.spaulding@epsi.fr',
+            subject: 'Sending Email using Node.js',
+            html: '<img src="'+ qrCode + '">'
+        };
+
+        transporter.sendMail(mailOptions, function(error, info){
+            if (error) {
+                console.log(error);
+            } else {
+                console.log('Email sent: ' + info.response);
+            }
+        });
+    })
+    res.send("qr code sent")
 });
 
 app.delete('/token', (req,res) => {    res.send("destroy token")});
