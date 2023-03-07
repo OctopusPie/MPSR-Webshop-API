@@ -6,6 +6,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const QRCode = require('qrcode');
 const nodemailer = require('nodemailer');
+const nodeMailer = require("nodemailer");
+const jwt = require("nodemailer/lib/dkim");
+require('dotenv').config();
 
 let importedJSON = [];
 
@@ -42,13 +45,93 @@ app.get('/customers/:id', (req, res) => {
     res.status(200).json(customer);
 });
 
-app.get('/prospects', (req,res) => {    res.send("Prospects list")});
-app.get('/orders', (req,res) => {    res.send("Orders list")});
-//product list (all products)
-app.get('/products', (req,res) => {    res.send("Products list")});
-//stock list (all stocks)
-app.get('/stocks', (req,res) => {    res.send("Stocks list")});
-app.post('/auth', (req,res) => {    res.send("authenticate")});
+// Login endpoint
+app.post("/login/:email", (req, res) => {
+    const { email } = req.params.email;
+    if (!email) {
+        res.status(404);
+        res.send({
+            message: "You didn't enter a valid email address.",
+        });
+    }
+    const token = makeToken(email);
+    const mailOptions = {
+        from: "You Know",
+        html: emailTemplate({
+            email,
+            link: `http://localhost:8090/account?token=${token}`,
+        }),
+        subject: "Your Magic Link",
+        to: email,
+    };
+    return transport.sendMail(mailOptions, (error) => {
+        if (error) {
+            res.status(404);
+            res.send("Can't send email.");
+        } else {
+            res.status(200);
+            res.send(`Magic link sent. : http://localhost:8090/account?token=${token}`);
+        }
+    });
+});
+
+app.get("/account", (req, res) => {
+    isAuthenticated(req, res)
+});
+
+const isAuthenticated = (req, res) => {  const { token } = req.query
+    if (!token) {
+        res.status(403)
+        res.send("Can't verify user.")
+        return
+    }
+    let decoded
+    try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET_KEY)
+    }
+    catch {
+        res.status(403)
+        res.send("Invalid auth credentials.")
+        return
+    }
+    if (!decoded.hasOwnProperty("email") || !decoded.hasOwnProperty("expirationDate")) {
+        res.status(403)
+        res.send("Invalid auth credentials.")
+        return
+    }
+    const { expirationDate } = decoded
+    if (expirationDate < new Date()) {
+        res.status(403)
+        res.send("Token has expired.")
+        return
+    }
+    res.status(200)
+    res.send("User has been validated.")
+}
+
+
+const transport = nodeMailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: 587,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+    }
+});
+
+// Make email template for magic link
+const emailTemplate = ({ username, link }) => `
+  <h2>Bonjour ${username}</h2>
+  <p>Scanner ce QRCode pour vous connectez:</p>
+  <p>${link}</p>`;
+
+// Generate token
+const makeToken = (email) => {
+    const expirationDate = new Date();
+    expirationDate.setHours(new Date().getHours() + 1);
+    return jwt.sign({ email, expirationDate }, process.env.JWT_SECRET_KEY);
+};
+
 
 //create  qr code every time this endpoint is called
 app.get('/qr', (req,res) => {
@@ -57,8 +140,8 @@ app.get('/qr', (req,res) => {
         let transporter = nodemailer.createTransport({
             service: 'outlook',
             auth: {
-                user: 'henri.spaulding@epsi.fr',
-                pass: '.59hen)SPA'
+                user: 'emzil@adress.com',
+                pass: 'password'
             }
         });
 
@@ -66,7 +149,7 @@ app.get('/qr', (req,res) => {
             from: 'henri.spaulding@epsi.fr',
             to: 'henri.spaulding@epsi.fr',
             subject: 'Sending Email using Node.js',
-            html: '<img src="'+ qrCode + '">'
+            html: '<img src="'+ qrCode + '" alt="missing qr code">'
         };
 
         transporter.sendMail(mailOptions, function(error, info){
@@ -82,6 +165,6 @@ app.get('/qr', (req,res) => {
 
 app.delete('/token', (req,res) => {    res.send("destroy token")});
 
-app.listen(8090, () => {  console.log('Server listening on port 8090')});
+app.listen(process.env.DEV_PORT, () => {  console.log('Server listening on port 8090')});
 
 
