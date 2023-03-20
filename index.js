@@ -5,7 +5,6 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
-const crypto = require('crypto');
 let importedJSON = [];
 
 const mysql = require('mysql2');
@@ -39,9 +38,8 @@ app.use(cors());
 
 // authentication request : check if the user is authenticated
 app.post('/auth', (req, res) => {
-    //const hash = crypto.createHash(process.env.HASH_ALGO).update(process.env.PASSWORD).digest(process.env.HASH_FORMAT);
     const email = req.body.email;
-    connection.query("SELECT * FROM authentication WHERE email = ?;", email, function (err, result, fields) {
+    connection.query("SELECT * FROM authentication WHERE email = ?;", email, function (err, result) {
         if (err) throw err;
         if (req.body.hash === result[0].hash) {
             res.status(200).json({message: "Authentification successful", status: 200});
