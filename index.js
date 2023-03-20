@@ -4,18 +4,27 @@ const customers = require('request');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
-const QRCode = require('qrcode');
-const nodemailer = require('nodemailer');
-const nodeMailer = require("nodemailer");
-const jwt = require("nodemailer/lib/dkim");
 require('dotenv').config();
+const sha1 = require('js-sha1');
 
 let importedJSON = [];
+
+const mysql = require('mysql');
+const connection = mysql.createConnection({
+    host     : process.env.DEV_HOST,
+    user     : process.env.DB_USER,
+    password : process.env.DB_USER_PASSWORD,
+    database : process.env.DB_NAME,
+});
+
+connection.connect(function(err) {
+    if (err) throw err;
+    console.log('Connected!');
+});
 
 customers('https://63d396f0c1ba499e54c3f915.mockapi.io/api/v1/customers', function (error, response, body) {
     if (!error && response.statusCode === 200) {
         importedJSON = JSON.parse(body);
-        console.log("Customer list received");
     }
 })
 
@@ -29,9 +38,25 @@ app.use(bodyParser.urlencoded({ extended: false }));
 // enabling CORS for all requests
 app.use(cors());
 
+// authentication request : check if the user is authenticated
+app.post('/auth', (req, res) => {
+    const password = sha1(process.env.PASSWORD);
+    connection.query("SELECT * FROM authentication", function (err, result, fields) {
+        if (err) throw err;
+        console.log(result);
+    });
+    if (password === process.env.HASH) {
+        res.status(200).json({message: "Authentification successful", status: 200});
+    }else {
+        res.status(403).json({message: "Authentification failed", status: 403});
+    }
+});
+
 
 app.get('/', (req, res) => {
-    res.status(201).json({message: "Successfully Registered", status: 201});
+    if (req.post('/auth')){
+        res.status(201).json({message: "Using Webshop API", status: 201});
+    }
 });
 
 app.get('/customers', (req,res) => {
@@ -45,9 +70,9 @@ app.get('/customers/:id', (req, res) => {
     res.status(200).json(customer);
 });
 
-//check if webshop authentification key is correct
-app.post('/customers/auth', (req, res) => {
-    const authKey = req.body.authKey;
+//check create authentication key for user
+app.post('/customers/auth/init', (req, res) => {
+    const authKey = req.request.authKey;
     if (authKey === process.env.AUTH_KEY) {
         res.status(200).json({message: "Authentification successful", status: 200});
     }else {
