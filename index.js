@@ -5,11 +5,10 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
-const sha1 = require('js-sha1');
-
+const crypto = require('crypto');
 let importedJSON = [];
 
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const connection = mysql.createConnection({
     host     : process.env.DEV_HOST,
     user     : process.env.DB_USER,
@@ -40,16 +39,16 @@ app.use(cors());
 
 // authentication request : check if the user is authenticated
 app.post('/auth', (req, res) => {
-    const password = sha1(process.env.PASSWORD);
-    connection.query("SELECT * FROM authentication", function (err, result, fields) {
+    //const hash = crypto.createHash(process.env.HASH_ALGO).update(process.env.PASSWORD).digest(process.env.HASH_FORMAT);
+    const email = req.body.email;
+    connection.query("SELECT * FROM authentication WHERE email = ?;", email, function (err, result, fields) {
         if (err) throw err;
-        console.log(result);
+        if (req.body.hash === result[0].hash) {
+            res.status(200).json({message: "Authentification successful", status: 200});
+        }else {
+            res.status(403).json({message: "Authentification failed", status: 403});
+        }
     });
-    if (password === process.env.HASH) {
-        res.status(200).json({message: "Authentification successful", status: 200});
-    }else {
-        res.status(403).json({message: "Authentification failed", status: 403});
-    }
 });
 
 
@@ -60,25 +59,34 @@ app.get('/', (req, res) => {
 });
 
 app.get('/customers', (req,res) => {
-    res.status(200).json(importedJSON);
+    if (req.post('/auth')){
+        res.status(200).json(importedJSON);
+    }
+
 });
 
 //get request for a specific customer with username to show the customer's details
 app.get('/customers/:id', (req, res) => {
-    const id = req.params.id;
-    const customer = importedJSON.find(customer => customer.id === id);
-    res.status(200).json(customer);
+    if (req.post('/auth')){
+        const id = req.params.id;
+        const customer = importedJSON.find(customer => customer.id === id);
+        res.status(200).json(customer);
+    }
+
 });
 
 //check create authentication key for user
 app.post('/customers/auth/init', (req, res) => {
-    const authKey = req.request.authKey;
-    if (authKey === process.env.AUTH_KEY) {
-        res.status(200).json({message: "Authentification successful", status: 200});
-    }else {
-        res.status(403).json({message: "Authentification failed", status: 403});
+    if (req.post('/auth')){
+        const authKey = req.request.authKey;
+        if (authKey === process.env.AUTH_KEY) {
+            res.status(200).json({message: "Authentification successful", status: 200});
+        }else {
+            res.status(403).json({message: "Authentification failed", status: 403});
+        }
     }
     }
+
 )
 
 app.listen(process.env.DEV_PORT, () => {  console.log('Server listening on port 8090')});
