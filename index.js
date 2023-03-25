@@ -42,9 +42,9 @@ app.post('/auth', (req, res) => {
     connection.query("SELECT * FROM authentication WHERE email = ?;", email, function (err, result) {
         if (err) throw err;
         if (req.body.hash === result[0].hash) {
-            res.status(200).json({message: "Authentification successful", status: 200});
+            res.status(200).json({message: "Authentication successful", status: 200});
         }else {
-            res.status(403).json({message: "Authentification failed", status: 403});
+            res.status(403).json({message: "Authentication failed", status: 403});
         }
     });
 });
@@ -72,20 +72,6 @@ app.get('/customers/:id', (req, res) => {
     }
 
 });
-
-//check create authentication key for user
-app.post('/customers/auth/init', (req, res) => {
-    if (req.post('/auth')){
-        const authKey = req.request.authKey;
-        if (authKey === process.env.AUTH_KEY) {
-            res.status(200).json({message: "Authentification successful", status: 200});
-        }else {
-            res.status(403).json({message: "Authentification failed", status: 403});
-        }
-    }
-    }
-
-)
 
 app.listen(process.env.DEV_PORT, () => {  console.log('Server listening on port 8090')});
 
